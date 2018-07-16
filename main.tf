@@ -1,5 +1,11 @@
+
 variable "cluster_name" {
   description = "Name of this EKS cluster"
+}
+
+variable "common_tags" {
+  description = "Tags that should be applied to all resources"
+  type        = "map"
 }
 
 variable "environment" {
@@ -72,28 +78,31 @@ provider "aws" {
 }
 
 module "vpc" {
-  source             = "./src/modules/vpc"
+  source              = "./src/modules/vpc"
 
-  name               = "${var.cluster_name}"
-  cidr               = "${var.cidr}"
-  internal_subnets   = "${var.internal_subnets}"
-  external_subnets   = "${var.external_subnets}"
-  availability_zones = "${var.availability_zones}"
-  environment        = "${var.environment}"
+  name                = "${var.cluster_name}"
+  cidr                = "${var.cidr}"
+  common_tags         = "${var.common_tags}"
+  internal_subnets    = "${var.internal_subnets}"
+  external_subnets    = "${var.external_subnets}"
+  availability_zones  = "${var.availability_zones}"
+  environment         = "${var.environment}"
 }
 
 module "security_groups" {
-  source      = "./src/modules/security-groups"
+  source              = "./src/modules/security-groups"
 
-  cluster_name= "${var.cluster_name}"
-  vpc_id      = "${module.vpc.id}"
-  environment = "${var.environment}"
-  cidr        = "${var.cidr}"
+  cluster_name        = "${var.cluster_name}"
+  common_tags         = "${var.common_tags}"
+  vpc_id              = "${module.vpc.id}"
+  environment         = "${var.environment}"
+  cidr                = "${var.cidr}"
 }
 
 module "bastion" {
   source          = "./src/modules/bastion"
 
+  common_tags     = "${var.common_tags}"
   region          = "${var.region}"
   instance_type   = "${var.bastion_instance_type}"
   volume_size     = "${var.bastion_volume_size}"
@@ -107,20 +116,21 @@ module "bastion" {
 module "iam" {
   source = "./src/modules/iam"
 
-  policy_arn_eks_cni     = "${var.policy_arn_eks_cni}"
-  policy_arn_eks_service = "${var.policy_arn_eks_service}"
-  policy_arn_ecr_read    = "${var.policy_arn_ecr_read}"
-  policy_arn_eks_cluster = "${var.policy_arn_eks_cluster}"
-  policy_arn_eks_worker  = "${var.policy_arn_eks_worker}"
+  policy_arn_eks_cni      = "${var.policy_arn_eks_cni}"
+  policy_arn_eks_service  = "${var.policy_arn_eks_service}"
+  policy_arn_ecr_read     = "${var.policy_arn_ecr_read}"
+  policy_arn_eks_cluster  = "${var.policy_arn_eks_cluster}"
+  policy_arn_eks_worker   = "${var.policy_arn_eks_worker}"
 }
 
 module "eks" {
-  source                 = "./src/modules/eks"
+  source                  = "./src/modules/eks"
 
-  cluster_name           = "${var.cluster_name}"
-  role_arn               = "${module.iam.role_arn_eks_basic_masters}"
-  cluster_subnets        = "${module.vpc.external_subnets}"
-  sg_id_cluster          = "${module.security_groups.sg_id_masters}"
+  cluster_name            = "${var.cluster_name}"
+  common_tags             = "${var.common_tags}"
+  role_arn                = "${module.iam.role_arn_eks_basic_masters}"
+  cluster_subnets         = "${module.vpc.external_subnets}"
+  sg_id_cluster           = "${module.security_groups.sg_id_masters}"
 }
 
 module "worker" {
@@ -128,6 +138,7 @@ module "worker" {
 
   # Use module output to wait for masters to create.
   cluster_name                  = "${module.eks.cluster_id}"
+  common_tags                   = "${var.common_tags}"
   instance_profile_name_workers = "${module.iam.instance_profile_name_workers}"
   worker_subnets                = "${module.vpc.internal_subnets}"
   sg_id_workers                 = "${module.security_groups.sg_id_workers}"

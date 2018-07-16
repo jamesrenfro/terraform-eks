@@ -22,6 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+variable "common_tags" {
+  description = "Tags that should be applied to all resources"
+  type        = "map"
+}
+
 variable "instance_type" {
   default     = "t2.micro"
   description = "Instance type, see a list at: https://aws.amazon.com/ec2/instance-types/"
@@ -85,15 +90,22 @@ resource "aws_instance" "bastion" {
     volume_size = "${var.volume_size}"
   }
 
-  tags {
-    Name        = "${var.environment}-${var.key_name}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.environment}-${var.key_name}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_eip" "bastion" {
   instance = "${aws_instance.bastion.id}"
   vpc      = true
+
+  tags = "${merge(
+    var.common_tags
+  )}"
 }
 
 // Bastion external IP address.

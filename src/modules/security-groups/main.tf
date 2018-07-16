@@ -12,6 +12,11 @@ variable "cluster_name" {
   type        = "string"
 }
 
+variable "common_tags" {
+  description = "Tags that should be applied to all resources"
+  type        = "map"
+}
+
 variable "environment" {
   description = "Name of the environment, e.g. dev, prod, etc."
   type        = "string"
@@ -125,7 +130,12 @@ resource "aws_security_group" "external_ssh" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [
+      "128.91.0.0/16",
+      "130.91.0.0/16",
+      "158.130.0.0/16",
+      "165.123.0.0/16"
+    ]
   }
 
   egress {
@@ -139,10 +149,13 @@ resource "aws_security_group" "external_ssh" {
     create_before_destroy = true
   }
 
-  tags {
-    Name        = "${format("%s external ssh", var.cluster_name)}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${format("%s external ssh", var.cluster_name)}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_security_group" "internal_ssh" {
@@ -168,10 +181,13 @@ resource "aws_security_group" "internal_ssh" {
     create_before_destroy = true
   }
 
-  tags {
-    Name        = "${format("%s internal ssh", var.cluster_name)}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${format("%s internal ssh", var.cluster_name)}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 // External SSH allows ssh connections on port 22 from the world.

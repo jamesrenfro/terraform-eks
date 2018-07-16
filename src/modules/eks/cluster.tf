@@ -9,5 +9,10 @@ resource "aws_eks_cluster" "cluster" {
       "${var.sg_id_cluster}",
     ]
   }
+
+// Doesn't seem to be supported yet
+//  tags = "${merge(
+//    var.common_tags
+//  )}"
 }
 

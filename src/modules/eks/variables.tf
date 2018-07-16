@@ -1,3 +1,8 @@
+variable "common_tags" {
+  description = "Tags that should be applied to all resources"
+  type        = "map"
+}
+
 variable "role_arn" {
   description = "ARN of the IAM role to use for the cluster."
   type        = "string"

@@ -26,6 +26,11 @@ variable "cidr" {
   description = "The CIDR block for the VPC."
 }
 
+variable "common_tags" {
+  description = "Tags that should be applied to all resources"
+  type        = "map"
+}
+
 variable "external_subnets" {
   description = "List of external subnets"
   type        = "list"
@@ -94,10 +99,14 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
   enable_dns_hostnames = true
 
-  tags {
-    Name        = "${var.name}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}",
+      "Environment", "${var.environment}",
+      "kubernetes.io/cluster/${var.name}", "shared"
+    )
+  )}"
 }
 
 /**
@@ -107,10 +116,13 @@ resource "aws_vpc" "main" {
 resource "aws_internet_gateway" "main" {
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
-    Name        = "${var.name}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_nat_gateway" "main" {
@@ -119,6 +131,14 @@ resource "aws_nat_gateway" "main" {
   allocation_id = "${element(aws_eip.nat.*.id, count.index)}"
   subnet_id     = "${element(aws_subnet.external.*.id, count.index)}"
   depends_on    = ["aws_internet_gateway.main"]
+
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_eip" "nat" {
@@ -128,6 +148,14 @@ resource "aws_eip" "nat" {
   count = "${signum((var.use_nat_instances * var.use_eip_with_nat_instances) + (var.use_nat_instances == 0 ? 1 : 0)) * length(var.internal_subnets)}"
 
   vpc = true
+
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_security_group" "nat_instances" {
@@ -158,6 +186,14 @@ resource "aws_security_group" "nat_instances" {
   }
 
   vpc_id = "${aws_vpc.main.id}"
+
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_instance" "nat_instance" {
@@ -165,15 +201,21 @@ resource "aws_instance" "nat_instance" {
   count             = "${(0 + var.use_nat_instances) * length(var.internal_subnets)}"
   availability_zone = "${element(var.availability_zones, count.index)}"
 
-  tags {
-    Name        = "${var.name}-${format("internal-%03d NAT", count.index+1)}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}-${format("internal-%03d NAT", count.index+1)}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 
-  volume_tags {
-    Name        = "${var.name}-${format("internal-%03d NAT", count.index+1)}"
-    Environment = "${var.environment}"
-  }
+  volume_tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}-${format("internal-%03d NAT", count.index+1)}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 
   key_name          = "${var.nat_instance_ssh_key_name}"
   ami               = "${data.aws_ami.nat_ami.id}"
@@ -200,6 +242,14 @@ resource "aws_eip_association" "nat_instance_eip" {
   count         = "${(0 + (var.use_nat_instances * var.use_eip_with_nat_instances)) * length(var.internal_subnets)}"
   instance_id   = "${element(aws_instance.nat_instance.*.id, count.index)}"
   allocation_id = "${element(aws_eip.nat.*.id, count.index)}"
+
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 /**
@@ -212,10 +262,14 @@ resource "aws_subnet" "internal" {
   availability_zone = "${element(var.availability_zones, count.index)}"
   count             = "${length(var.internal_subnets)}"
 
-  tags {
-    Name        = "${var.name}-${format("internal-%03d", count.index+1)}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}-${format("internal-%03d", count.index+1)}",
+      "Environment", "${var.environment}",
+      "kubernetes.io/cluster/${var.name}", "shared"
+    )
+  )}"
 }
 
 resource "aws_subnet" "external" {
@@ -225,10 +279,14 @@ resource "aws_subnet" "external" {
   count                   = "${length(var.external_subnets)}"
   map_public_ip_on_launch = true
 
-  tags {
-    Name        = "${var.name}-${format("external-%03d", count.index+1)}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}-${format("external-%03d", count.index+1)}",
+      "Environment", "${var.environment}",
+      "kubernetes.io/cluster/${var.name}", "shared"
+    )
+  )}"
 }
 
 /**
@@ -238,10 +296,13 @@ resource "aws_subnet" "external" {
 resource "aws_route_table" "external" {
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
-    Name        = "${var.name}-external-001"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}-external-001",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_route" "external" {
@@ -254,10 +315,13 @@ resource "aws_route_table" "internal" {
   count  = "${length(var.internal_subnets)}"
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
-    Name        = "${var.name}-${format("internal-%03d", count.index+1)}"
-    Environment = "${var.environment}"
-  }
+  tags = "${merge(
+    var.common_tags,
+    map(
+      "Name", "${var.name}-${format("internal-%03d", count.index+1)}",
+      "Environment", "${var.environment}"
+    )
+  )}"
 }
 
 resource "aws_route" "internal" {
