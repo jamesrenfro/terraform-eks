@@ -15,3 +15,6 @@ aws-auth-cm.yaml
 # BATS assertions library
 tests/bats/helpers/assertions
 
+# IDEA
+.idea/
+*.iml
