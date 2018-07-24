@@ -8,6 +8,12 @@ availability_zones = [
   "us-west-2c",
 ]
 
+common_tags = {
+    "ISC-ApplicationID" = "shared"
+    "ISC-ApptioCode" = "PID248"
+    "ISC-Environment" = "dev"
+}
+
 # VPC CIDR block
 cidr = "10.30.0.0/16"
 

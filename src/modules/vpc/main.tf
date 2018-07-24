@@ -103,8 +103,7 @@ resource "aws_vpc" "main" {
     var.common_tags,
     map(
       "Name", "${var.name}",
-      "Environment", "${var.environment}",
-      "kubernetes.io/cluster/${var.name}", "shared"
+      "Environment", "${var.environment}"
     )
   )}"
 }
@@ -266,8 +265,7 @@ resource "aws_subnet" "internal" {
     var.common_tags,
     map(
       "Name", "${var.name}-${format("internal-%03d", count.index+1)}",
-      "Environment", "${var.environment}",
-      "kubernetes.io/cluster/${var.name}", "shared"
+      "Environment", "${var.environment}"
     )
   )}"
 }
@@ -283,8 +281,7 @@ resource "aws_subnet" "external" {
     var.common_tags,
     map(
       "Name", "${var.name}-${format("external-%03d", count.index+1)}",
-      "Environment", "${var.environment}",
-      "kubernetes.io/cluster/${var.name}", "shared"
+      "Environment", "${var.environment}"
     )
   )}"
 }
